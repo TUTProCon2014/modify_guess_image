@@ -1,5 +1,6 @@
 人力修正処理関数郡
 =====
+Author: Teruaki Numata
 
 ### vector<vector<size_t>> modify_guess_image(vector<vector<size_t>> before, IplImage* image, int width, int height, int  int_div_x, int int_div_y)
 人力修正処理関数の本体です。
@@ -23,3 +24,4 @@ VS２０１３上でのみ動作確認できています。
 　
 　これらについても修正していきます。
 　
+　test.cppで動作確認できます。上記以外のバグ・不具合等があるかもしれないのでもし見つけた場合は連絡をお願いします。
