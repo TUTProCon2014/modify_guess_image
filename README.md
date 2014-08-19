@@ -2,13 +2,13 @@
 =====
 Author: Teruaki Numata
 
-### vector<vector<size_t>> modify_guess_image(vector<vector<size_t>> before, IplImage* image, int width, int height, int  int_div_x, int int_div_y)
+###modify_guess_image
 人力修正処理関数の本体です。
  問題クラスを引数として取り込めていないです。すみませんm(_ _)m
  その代わり、引数の内容自体は問題クラスのメンバ変数と同じものを取り込みます。
  後ほど問題クラスを引数として取り込めるように修正します。
 
-### void Mouse(int event, int x, int y, int flags, void* param)
+### void Mouse
 マウス処理のためののコールバック関数です・
  マウス操作の処理と描画処理を行います。
  
