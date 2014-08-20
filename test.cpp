@@ -41,12 +41,15 @@ int main(int argc, char* argv[])
 {
 	vector<vector<size_t>> index;	// インデックス２次元配列
 
-	for (int i = 0, c = 1; i < int_div_y; i++){
+    {
+        size_t c = 1;
+        for (auto i : utils::iota(int_div_y)){
         auto cs = utils::iota(c, c + int_div_x);
 
         index.emplace_back(cs.begin(), cs.end());
         c += int_div_x;
 	}
+    }
 
 	// 試しにシャッフルしてみる
 	swap(index[0][0], index[int_div_y-1][int_div_x-1]);
