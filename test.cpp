@@ -39,20 +39,15 @@ int int_div_x = 5, int_div_y = 5;	//分割数
 // 画像表示
 int main(int argc, char* argv[])
 {
-
-	vector<size_t> v;	//インデックス２次元配列生成用
 	vector<vector<size_t>> index;	// インデックス２次元配列
 
-	
 	for (int i = 0, c = 1; i < int_div_y; i++){
-		v.clear();
-		for (int j = 0; j < int_div_x; j++,c++){
-			{
-				v.push_back(c);
-			}
-		}
-		index.push_back(v);
+        auto cs = utils::iota(c, c + int_div_x);
+
+        index.emplace_back(cs.begin(), cs.end());
+        c += int_div_x;
 	}
+
 	// 試しにシャッフルしてみる
 	swap(index[0][0], index[int_div_y-1][int_div_x-1]);
 
