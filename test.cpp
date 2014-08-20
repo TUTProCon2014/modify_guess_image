@@ -56,12 +56,10 @@ int main(int argc, char* argv[])
 
 	//人力修正前
 	cout << "修正前" << endl;
-	for (int i = 0, c = 1; i < int_div_y; i++){
-		for (int j = 0; j < int_div_x; j++, c++){
-			{
-				cout << index[i][j] << ' ';
-			}
-		}
+    for (auto& ee : index){
+        for (auto e: ee){
+                cout << e << ' ';
+
 		cout << endl;
 	}
 	cout << endl << endl;
@@ -76,12 +74,10 @@ int main(int argc, char* argv[])
 
 	//人力修正後
 	cout << "修正後" << endl;
-	for (int i = 0, c = 1; i < int_div_y; i++){
-		for (int j = 0; j < int_div_x; j++, c++){
-			{
-				cout << index[i][j] << ' ';
-			}
-		}
+    for (auto& ee : index){
+        for (auto e: ee){
+                cout << e << ' ';
+
 		cout << endl;
 	}
 	waitKey(0);
