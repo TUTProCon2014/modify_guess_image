@@ -4,7 +4,6 @@
 #include <opencv2/opencv_lib.hpp>
 #include <opencv/highgui.h>
 
-#include <windows.h>
 
 //名前空間の指定
 using namespace cv;
