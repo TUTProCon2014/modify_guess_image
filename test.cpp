@@ -32,7 +32,7 @@ struct Paramter
 }paramter;
 
 // イメージ
-IplImage *img = cvLoadImage("画像.png", CV_LOAD_IMAGE_ANYCOLOR | CV_LOAD_IMAGE_ANYDEPTH);	// ばらばら画像
+IplImage *img;    // ばらばら画像
 int int_div_x = 5, int_div_y = 5;	//分割数
 
 
@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
 	}
 	cout << endl << endl;
 
+    img = cvLoadImage(FILENAME, CV_LOAD_IMAGE_ANYCOLOR | CV_LOAD_IMAGE_ANYDEPTH);
 
 	// 人力関数本体
 	index = modify_guess_image(index, img, img->width, img->height, int_div_x, int_div_y);
