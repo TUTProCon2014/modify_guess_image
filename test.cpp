@@ -249,6 +249,8 @@ void Mouse(int event, int x, int y, int flags, void* param) // コールバッ�
 		imshow("test", paramter.base_image);
 		break;
 
+      default:
+        break;
 	}
 
 	imshow("test", paramter.base_image);
