@@ -22,15 +22,16 @@ vector<vector<size_t>> modify_guess_image(vector<vector<size_t>> const & before,
 // マウス操作用のコールバック関数
 void Mouse(int event, int x, int y, int flags, void *param);
 
-typedef pair<int, Mat> Pmi;    // 断片テーブル用
+typedef pair<int, const Mat> Pmi;    // 断片テーブル用
 
 
 //マウス操作のコールバック関数へ渡す引数用の構造体 
 struct Paramter
 {
     vector<vector<size_t>> before,after;
-    Pmi *numbering_table;
-    Mat image,base_image;
+    vector<Pmi> *numbering_table;
+    Mat image;
+    utils::DividedImage* baseImage;
     size_t width;
     size_t height;
     size_t int_div_x;
@@ -42,12 +43,15 @@ struct Paramter
 int main(int argc, char* argv[])
 {
     // img = cvLoadImage(FILENAME, CV_LOAD_IMAGE_ANYCOLOR | CV_LOAD_IMAGE_ANYDEPTH);
-    auto p_opt = inout::get_problem_from_test_server(1);
+    auto p_opt = utils::Problem::get("img1.ppm");
+
+    if(!p_opt)
+        p_opt = inout::get_problem_from_test_server(1);
+
     if(p_opt){
         auto& pb = *p_opt;
 
         vector<vector<size_t>> index;    // インデックス２次元配列
-
         {
             size_t c = 1;
             for (auto i : utils::iota(pb.div_y())){
@@ -106,64 +110,41 @@ vector<vector<size_t>> modify_guess_image(vector<vector<size_t>> const & before,
     cout << "入れ替えたい断片２つをクリックし、ESCキーを押すと断片同士が入れ替わります" << endl;
     cout << "ESCキーを２回連続で押す　もしくは　0キー　を押すと関数を終了します" << endl;
 
-    Pmi numbering_table[257] = {};        /* 
-                                        ばらばら状態の画像を左上から右へ向かって1,2,...右下をpb.div_x() * pb.div_y()という感じにナンバリングし、
-                                        断片と番号を１つのペアにしたもの
-                                        */
+    /* ばらばら状態の画像を左上から右へ向かって1,2,...右下をpb.div_x() * pb.div_y()という感じにナンバリングし、
+        断片と番号を１つのペアにしたもの */
+    std::vector<Pmi> numbering_table;
+    numbering_table.emplace_back(0, pb.get_element(0, 0).cvMat());  // dummy
 
-    for (int i = 0, num = 1; i < pb.div_y(); i++){
-        for (int j = 0; j < pb.div_x(); j++){
-            numbering_table[num] =
-                Pmi(
-                num,
-                Mat(src_img,
-                    Rect(
-                        j*(pb.width() / pb.div_x()),
-                        i*(pb.height() / pb.div_y()),
-                        (pb.width() / pb.div_x()),
-                        (pb.height() / pb.div_y())
-                        )
-                    )
-                );
-            num++;
-        }
+    for (auto i: utils::iota(pb.div_y())){
+        for (auto j: utils::iota(pb.div_x()))
+            numbering_table.emplace_back(numbering_table.size(), pb.get_element(i, j).cvMat());
     }
 
-
-    for(auto& ee :  before)
+    for(auto& ee :  before){
         for(auto e : ee)
-            if(e == 0){
+            if(e == 0)
                 cout << "中身が存在しない箇所が見つかりました。関数を終了します。" << endl;
-            }
+    }
+
 
     auto after = before;    // 戻り値用
 
-
     // 空のMatを用意 width x height 8Bit3Channel(24BitColor)
     Mat base_image(Size(pb.width(), pb.height()), CV_8UC3);
+    utils::DividedImage baseImage(utils::Image(base_image), pb.div_x(), pb.div_y());
 
-    for(auto i: utils::iota(pb.div_y())){
-        for (auto j: utils::iota(pb.div_x())){
-            auto dstImg = Mat(base_image,
-                Rect(
-                    j * (pb.width() / pb.div_x()),
-                    i * (pb.height() / pb.div_y()),
-                    pb.width() / pb.div_x(),
-                    pb.height() / pb.div_y()
-                ));
-            
+    for(auto i: utils::iota(pb.div_y()))
+        for (auto j: utils::iota(pb.div_x()))
             numbering_table[after[i][j]].second
-            .copyTo(dstImg);
-        }
-    }
+                .copyTo(baseImage.get_element(i, j).cvMat());
 
 
     std::unique_ptr<Paramter> param(new Paramter);
     param->before = before;
     param->after = after;
-    param->numbering_table = &numbering_table[0];
+    param->numbering_table = &numbering_table;
     param->image = src_img;
-    param->base_image = base_image;
+    param->baseImage = &baseImage;
     param->width = pb.width();
     param->height = pb.height();
     param->int_div_x = pb.div_x();
@@ -172,7 +153,7 @@ vector<vector<size_t>> modify_guess_image(vector<vector<size_t>> const & before,
 
     // ウィンドウ生成
     namedWindow("test", CV_WINDOW_AUTOSIZE);
-    imshow("test", base_image)
+    imshow("test", base_image);
     cvSetMouseCallback("test", Mouse, param.get());
     waitKey(0);
 
@@ -200,42 +181,22 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
         }
         else if (tate !=  tate2|| yoko != yoko2)
         {
-            waitKey(0);
+            // waitKey(0);
             swap(param->after[tate][yoko], param->after[tate2][yoko2]);
             tate = yoko = -1;
 
-
-            Mat base_image(Size(param->width, param->height), CV_8UC3);
-            Mat Roi[2];
-
-
-            for (int i = 0; i < param->int_div_y; i++){
-                for (int j = 0; j < param->int_div_x; j++){
-                    Roi[0] = Mat(param->base_image,
-                        Rect(
-                        j*(param->width / param->int_div_x),
-                        i*(param->height / param->int_div_y),
-                        (param->width / param->int_div_x),
-                        (param->height / param->int_div_y)
-                        )
-
-                        );
-                    Roi[1] = param->numbering_table[param->after[i][j]].second;
-
-
-                    Roi[1].copyTo(Roi[0]);
-                    
-                }
-            }
-
+            for (auto i: utils::iota(param->int_div_y))
+                for (auto j: utils::iota(param->int_div_x))
+                    param->numbering_table->at(param->after[i][j]).second
+                        .copyTo(param->baseImage->get_element(i, j).cvMat());
         }
         
-        imshow("test", param->base_image);
+        imshow("test", param->baseImage->cvMat());
         break;
 
       default:
         break;
     }
 
-    imshow("test", param->base_image);
+    imshow("test", param->baseImage->cvMat());
 }
