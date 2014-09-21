@@ -12,141 +12,11 @@
 #include "../utils/include/range.hpp"
 #include "../utils/include/exception.hpp"
 #include "../guess_img/include/guess.hpp"
+#include "common.hpp"
 #include "interactive_guess.hpp"
 
 
 namespace procon { namespace modify {
-
-
-struct MouseEvent
-{
-    MouseEvent(int ev, utils::Index2D const & idx)
-    : event(ev), index(idx) {}
-
-    int event;
-    utils::Index2D index;
-
-    bool isUpL() const { return event == CV_EVENT_LBUTTONUP; }
-    bool isDownL() const { return event == CV_EVENT_LBUTTONDOWN; }
-    bool isUpR() const { return event == CV_EVENT_RBUTTONUP; }
-    bool isDownR() const { return event == CV_EVENT_RBUTTONDOWN; }
-
-
-    template <typename Stream>
-    void to_string(Stream & os)
-    {
-        os << "MouseEvent(";
-        if(isUpL()) os << "UL";
-        else if(isUpR()) os << "UR";
-        else if(isDownL()) os << "DL";
-        else if(isDownR()) os << "DR";
-        else os << "XX";
-        os << ", ";
-
-        utils::swriteOne(os, index);
-        os << ")";
-    }
-};
-
-
-template <typename Iterator>
-size_t matchLeftClick(Iterator b, Iterator e)
-{
-    if(b == e || !(*b).isDownL())
-        return 0;
-
-    const auto lastIndex = (*b).index;
-    if((++b) == e || !(*b).isUpL() || lastIndex != (*b).index)
-        return 1;
-
-    return 2;
-}
-
-
-template <typename Iterator>
-size_t matchLeftDrag(Iterator b, Iterator e)
-{
-    if(b == e || !(*b).isDownL())
-        return 0;
-
-    const auto lastIndex = (*b).index;
-    if((++b) == e || !(*b).isUpL() || lastIndex == (*b).index)
-        return 1;
-
-    return 2;
-}
-
-
-template <typename Iterator>
-size_t matchLeftDoubleClick(Iterator b, Iterator e)
-{
-    size_t ret = matchLeftClick(b, e);
-    if(ret != 2)
-        return ret;
-
-    const auto lastIndex = (*b).index;
-    ++(++b);
-
-    ret += matchLeftClick(b, e);
-    if(ret != 2 && (*b).index == lastIndex)
-        return ret;
-    else
-        return 2;
-}
-
-
-template <typename Iterator>
-size_t matchRightClick(Iterator b, Iterator e)
-{
-    if(b == e || !(*b).isDownR())
-        return 0;
-
-    const auto lastIndex = (*b).index;
-    if((++b) == e || !(*b).isUpR() || lastIndex != (*b).index)
-        return 1;
-
-    return 2;
-}
-
-
-//マウス操作のコールバック関数へ渡す引数用の構造体 
-struct Parameter
-{
-    Parameter(utils::DividedImage const & pb,
-              std::vector<std::vector<utils::Index2D>> const & index,
-              char const * title)
-    : swpImage(pb.clone(), index), mouseEvSq(),
-      isFixed(std::vector<std::vector<bool>>(pb.div_y(), std::vector<bool>(pb.div_x(), false))),
-	  windowName(title){}
-
-    utils::SwappedImage swpImage;
-    std::deque<MouseEvent> mouseEvSq;
-    std::vector<std::vector<bool>> isFixed;
-    char const * windowName;
-
-
-    void swap_element(utils::Index2D const & idx1, utils::Index2D const & idx2)
-    {
-        swpImage.swap_element(idx1, idx2);
-        std::swap(isFixed[idx1[0]][idx1[1]], isFixed[idx2[0]][idx2[1]]);
-    }
-
-
-    cv::Mat cvMat() const
-    {
-        auto dup = swpImage.clone();
-
-        utils::DividedImage::foreach(swpImage, [&](size_t i, size_t j){
-            if(isFixed[i][j]){
-                dup.get_element(i, j).cvMat() *= 0.5;
-                dup.get_element(i, j).cvMat() +=  cv::Scalar(0, 0, 255) * 0.5;
-            }
-        });
-
-        return dup.cvMat();
-    }
-};
-
 
 
 // マウス操作のコールバック
@@ -177,11 +47,10 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
         break;
     }
 
-    // utils::writefln("cmd size: %, cmds : %", evSq.size(), evSq);
+    utils::writefln("cmd size: %, cmds : %", evSq.size(), evSq);
 
     /**
     最長マッチ戦略でコマンド列を処理します。
-    たとえば、
     */
     size_t executeCmdN = 0;
     do{
@@ -198,8 +67,12 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
 
             for(auto r = idx1[0]; r <= idx2[0]; ++r)
                 for (auto c = idx1[1]; c <= idx2[1]; ++c){
-                    param.isFixed[r][c] = !param.isFixed[r][c];
-                    // utils::writefln("(%, %)", r, c);
+                    if (param.tileState[r][c].isFree())
+                        param.tileState[r][c].setGroup(0);
+                    else if(param.tileState[r][c].isGrouped())
+                        param.tileState[r][c].setFixed();
+                    else
+                        param.tileState[r][c].reset();
                 }
 
             continue;
@@ -207,10 +80,14 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
 
         executeCmdN = std::max(executeCmdN, matchLeftDoubleClick(evSq.begin(), evSq.end()));
         if(executeCmdN == 4){
-            const auto idx1 = evSq[0].index,
-                       idx2 = evSq[2].index;
+            const auto idx1 = evSq[0].index;
+            const auto r = idx1[0],
+                       c = idx1[1];
 
-            param.isFixed[idx1[0]][idx1[1]] = !param.isFixed[idx1[0]][idx1[1]];
+            if (param.tileState[r][c].isFixed())
+                param.tileState[r][c].reset();
+            else
+                param.tileState[r][c].setFixed();
             continue;
         }
 
@@ -306,19 +183,15 @@ std::vector<std::vector<utils::Index2D>> modify_guess_image(std::vector<std::vec
         utils::collectException<std::runtime_error>([&](){
             auto pred = [](utils::Image const & a, utils::Image const & b, utils::Direction dir){ return guess::diff_connection(a, b, dir); };
 
-            std::vector<std::vector<boost::optional<utils::Index2D>>> opIndex(pb.div_y());
-            auto& index = param->swpImage.get_index();
-            utils::DividedImage::foreach(pb, [&opIndex, &index, &param](std::size_t i, std::size_t j){
-                if(param->isFixed[i][j])
-                    opIndex[i].emplace_back(index[i][j]);
-                else
-                    opIndex[i].emplace_back(boost::none);
-            });
-
-            return interactive_guess(opIndex, pb, pred);
+            return interactive_guess(*param, pb, pred);
         })
-        .onSuccess([&](std::vector<std::vector<Index2D>>&& v){
+        .onSuccess([&](std::vector<std::vector<utils::Index2D>>&& v){
             param->swpImage = utils::SwappedImage(param->swpImage.dividedImage(), v);
+
+            utils::DividedImage::foreach(param->swpImage, [&](size_t i, size_t j){
+                if(param->tileState[i][j].isGrouped())
+                    param->tileState[i][j].reset();
+            });
         })
         .onFailure([](std::runtime_error& ex){ utils::writeln(ex); });
     };
