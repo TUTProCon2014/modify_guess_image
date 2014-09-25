@@ -17,41 +17,32 @@
 
 namespace procon { namespace modify {
 
-using ImageID = utils::Index2D;
-
-struct Index2DHash
-{
-    using result_type = std::size_t;
-
-    result_type operator()(ImageID id) const
-    {
-        std::hash<std::size_t> hs;
-        return hs(id[0]) + hs(id[1]);
-    }
-};
+using namespace utils;
 
 using Group = std::vector<std::tuple<ImageID, std::array<std::ptrdiff_t, 2>>>;
 using OptionalMap = std::vector<std::vector<boost::optional<ImageID>>>;
+using ImgMap = std::vector<std::vector<ImageID>>;
+using Remains = std::unordered_set<ImageID>;
 
 
 template <typename BinFunc>
-double calcAllValue(std::vector<std::vector<ImageID>> const & imgMap, utils::Problem const & pb, BinFunc pred)
+double calcAllValue(ImgMap const & imgMap, Problem const & pb, BinFunc pred)
 {
     double sumV = 0;
-    for (auto i : utils::iota(1, pb.div_y()))
-        for (auto j : utils::iota(0, pb.div_x())){
-            auto idx1 = imgMap[i-1][j],
-                idx2 = imgMap[i][j];
+    for (auto i : iota(1, pb.div_y()))
+        for (auto j : iota(0, pb.div_x())){
+            const auto imgID1 = imgMap[i-1][j],
+                       imgID2 = imgMap[i][j];
 
-            sumV += pred(pb.get_element(idx1[0], idx1[1]), pb.get_element(idx2[0], idx2[1]), utils::Direction::down);
+            sumV += pred(pb.get_element(imgID1), pb.get_element(imgID2), Direction::down);
         }
 
-    for (auto i : utils::iota(0, pb.div_y()))
-        for (auto j : utils::iota(1, pb.div_x())){
-            auto idx1 = imgMap[i][j - 1];
-            auto idx2 = imgMap[i][j];
+    for (auto i : iota(0, pb.div_y()))
+        for (auto j : iota(1, pb.div_x())){
+            const auto imgID1 = imgMap[i][j - 1],
+                       imgID2 = imgMap[i][j];
         
-            sumV += pred(pb.get_element(idx1[0], idx1[1]), pb.get_element(idx2[0], idx2[1]), utils::Direction::right);
+            sumV += pred(pb.get_element(imgID1), pb.get_element(imgID2), Direction::right);
         }
 
     return sumV;
@@ -59,48 +50,46 @@ double calcAllValue(std::vector<std::vector<ImageID>> const & imgMap, utils::Pro
 
 
 template <typename BinFunc>
-std::vector<std::vector<ImageID>>
-    fill_remain_tile(
+ImgMap fill_remain_tile(
         OptionalMap const & imgMap,
-        std::unordered_set<ImageID, Index2DHash> const & remain,
-        utils::Problem const & pb,
+        Remains const & remain,
+        Problem const & pb,
         BinFunc pred)
 {
     OptionalMap before = imgMap;
 
     PROCON_ENFORCE(before.size() == pb.div_y(), "Contract error: 'before.size() != pb.div_y()'");
 
-    for(auto i: utils::iota(pb.div_y()))
-        PROCON_ENFORCE(before[i].size() == pb.div_x(), utils::format("Contract error: 'before[%].size() != pb.div_x()'", i));
+    for(auto i: iota(pb.div_y()))
+        PROCON_ENFORCE(before[i].size() == pb.div_x(), format("Contract error: 'before[%].size() != pb.div_x()'", i));
 
     PROCON_ENFORCE(remain.size() < pb.div_x() * pb.div_y(), "Contract error: 'all argument(before)'s elements are null.");
 
     // beforeでの抜け落ち`where`の周囲について、`which`画像がどの程度マッチするかを返す
-    auto around_pred_value = [&](utils::Index2D where, ImageID which){
+    auto around_pred_value = [&](Index2D where, ImageID which){
         const auto i = where[0],
                    j = where[1];
 
-        auto pred_value = [&](utils::Index2D a, utils::Index2D b, utils::Direction dir)
-        { /*utils::writefln("%, %, %", a, b, static_cast<size_t>(dir));*/
-            return std::abs(pred(pb.get_element(a[0], a[1]), pb.get_element(b[0], b[1]), dir)); };
+        auto pred_value = [&](ImageID a, ImageID b, Direction dir)
+        { return std::abs(pred(pb.get_element(a), pb.get_element(b), dir)); };
 
         double v = 0;
-        if(i > 0 && !!before[i-1][j])               v += pred_value(which, *before[i-1][j], utils::Direction::up);
-        if(i < pb.div_y() - 1 && !!before[i+1][j])  v += pred_value(which, *before[i+1][j], utils::Direction::down); 
-        if(j > 0 && !!before[i][j-1])               v += pred_value(which, *before[i][j-1], utils::Direction::left);
-        if(j < pb.div_x() - 1 && !!before[i][j+1])  v += pred_value(which, *before[i][j+1], utils::Direction::right);
+        if(i > 0 && !!before[i-1][j])               v += pred_value(which, *before[i-1][j], Direction::up);
+        if(i < pb.div_y() - 1 && !!before[i+1][j])  v += pred_value(which, *before[i+1][j], Direction::down); 
+        if(j > 0 && !!before[i][j-1])               v += pred_value(which, *before[i][j-1], Direction::left);
+        if(j < pb.div_x() - 1 && !!before[i][j+1])  v += pred_value(which, *before[i][j+1], Direction::right);
 
-        // utils::writefln("%, %, %", where, which, v);
+        // writefln("%, %, %", where, which, v);
         return v;
     };
 
 
     // 次のbeforeでの抜け落ち位置を返す
     auto get_nextTargetIndex = [&](){
-        auto targetIndex = boost::optional<utils::Index2D>(boost::none);
+        auto targetIndex = boost::optional<Index2D>(boost::none);
         std::size_t maxN = 0;
-        for(auto i: utils::iota(pb.div_y()))
-            for(auto j: utils::iota(pb.div_x())){
+        for(auto i: iota(pb.div_y()))
+            for(auto j: iota(pb.div_x())){
                 if(before[i][j])
                     continue;
 
@@ -112,7 +101,7 @@ std::vector<std::vector<ImageID>>
 
                 if(maxN < cnt){
                     maxN = cnt;
-                    targetIndex = utils::makeIndex2D(i, j);
+                    targetIndex = makeIndex2D(i, j);
 
                     if(cnt == 4) goto Lreturn;
                 }
@@ -122,7 +111,7 @@ std::vector<std::vector<ImageID>>
     };
 
 
-    std::unordered_set<ImageID, Index2DHash> rem = remain;
+    std::unordered_set<ImageID> rem = remain;
     while(1){
         auto tgtIdx = get_nextTargetIndex();
         if (!tgtIdx)
@@ -130,33 +119,33 @@ std::vector<std::vector<ImageID>>
 
         PROCON_ENFORCE(!before[(*tgtIdx)[0]][(*tgtIdx)[1]], "Error");
 
-        // utils::writeln(*tgtIdx);
+        // writeln(*tgtIdx);
         PROCON_ENFORCE(!rem.empty(), "Error, rem.empty() == true");
 
         double min = std::numeric_limits<double>::infinity();
-        boost::optional<utils::Index2D> mostIndex = boost::none;
-        for(auto& idx: rem){
-            const double v = around_pred_value(*tgtIdx, idx);
+        boost::optional<ImageID> mostImg = boost::none;
+        for(auto& imgId: rem){
+            const double v = around_pred_value(*tgtIdx, imgId);
             if(v <= min){
                 min = v;
-                mostIndex = idx;
+                mostImg = imgId;
             }
         }
 
-        // utils::writeln(*mostIndex);
-        PROCON_ENFORCE(mostIndex, "Error, mostIndex is null");
-        before[(*tgtIdx)[0]][(*tgtIdx)[1]] = *mostIndex;
-        rem.erase(*mostIndex);
+        // writeln(*mostIndex);
+        PROCON_ENFORCE(mostImg, "Error, mostImg is null");
+        before[(*tgtIdx)[0]][(*tgtIdx)[1]] = *mostImg;
+        rem.erase(*mostImg);
     }
 
-    std::vector<std::vector<utils::Index2D>> dst; dst.reserve(before.size());
-    for(auto i: utils::iota(before.size())){
+    ImgMap dst; dst.reserve(before.size());
+    for(auto i: iota(before.size())){
         dst.emplace_back(before[i].size());
-        for(auto j: utils::iota(before[i].size()))
+        for(auto j: iota(before[i].size()))
             dst[i][j] = *PROCON_ENFORCE(before[i][j], "Error: all before's elements are null.");
     }
 
-    // utils::writeln(dst);
+    // writeln(dst);
     return dst;
 }
 
@@ -193,11 +182,11 @@ void reset_opt_map(Group const & g, OptionalMap& imgMap, size_t i, size_t j)
 
 
 template <typename Iter, typename BinFunc>
-std::tuple<double, std::vector<std::vector<ImageID>>>
+std::tuple<double, ImgMap>
     position_bfs(Iter bg, Iter ed,
                  OptionalMap const & imgMap,
-                 std::unordered_set<ImageID, Index2DHash>& remain,
-                 utils::Problem const & pb,
+                 Remains const & remain,
+                 Problem const & pb,
                  BinFunc pred)
 {
     OptionalMap copyedMap = imgMap;
@@ -212,8 +201,8 @@ std::tuple<double, std::vector<std::vector<ImageID>>>
     Group& g = *bg;
     Iter next = bg + 1;
 
-    auto dst = std::make_tuple(std::numeric_limits<double>::infinity(), std::vector<std::vector<utils::Index2D>>());
-    utils::DividedImage::foreach(pb, [&](size_t i, size_t j){
+    auto dst = std::make_tuple(std::numeric_limits<double>::infinity(), ImgMap());
+    DividedImage::foreach(pb, [&](size_t i, size_t j){
         if(is_fit(g, copyedMap, i, j)){
             set_opt_map(g, copyedMap, i, j);
             auto res = position_bfs(next, ed, copyedMap, remain, pb, pred);
@@ -229,15 +218,14 @@ std::tuple<double, std::vector<std::vector<ImageID>>>
 
 
 template <typename BinFunc>
-std::vector<std::vector<utils::Index2D>>
-    interactive_guess(Parameter const & param, utils::Problem const & pb, BinFunc pred)
+ImgMap interactive_guess(Parameter const & param, Problem const & pb, BinFunc pred)
 {
     using namespace boost::adaptors;
 
     auto& imgIdx = param.swpImage.get_index();
     auto gps = [&](){
         std::vector<Group> gps;
-        utils::DividedImage::foreach(param.swpImage, [&](size_t i, size_t j){
+        DividedImage::foreach(param.swpImage, [&](size_t i, size_t j){
             if(param.tileState[i][j].isGrouped()){
                 const auto gId = param.tileState[i][j].groupId();
                 if(gps.size() <= gId)
@@ -264,9 +252,9 @@ std::vector<std::vector<utils::Index2D>>
         }
     }
 
-    std::unordered_set<utils::Index2D, Index2DHash> remain;
+    Remains remain;
     OptionalMap imgMap(pb.div_y());
-    utils::DividedImage::foreach(pb, [&](size_t i, size_t j){
+    DividedImage::foreach(pb, [&](size_t i, size_t j){
         if(param.tileState[i][j].isFree())
             remain.emplace(imgIdx[i][j]);
 

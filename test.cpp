@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
         auto idxs = guess::guess(pb, pred);
         
         try{
-            auto after = modify::modify_guess_image(idxs, pb, [](std::vector<std::vector<utils::Index2D>> index){
+            auto after = modify::modify_guess_image(idxs, pb, [](std::vector<std::vector<utils::ImageID>> imgMap){
                 utils::writeln("send");
             });
         }

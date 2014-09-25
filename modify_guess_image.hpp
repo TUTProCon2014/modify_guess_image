@@ -156,7 +156,7 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
 エンターを押せば、callbackが別スレッドで起動します
 */
 template <typename Task>
-std::vector<std::vector<utils::Index2D>> modify_guess_image(std::vector<std::vector<utils::Index2D>> const & before, utils::Problem const & pb, Task callback)
+std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vector<utils::ImageID>> const & before, utils::Problem const & pb, Task callback)
 {
     const auto windowName = "Modify Guess Image";
 
@@ -185,7 +185,7 @@ std::vector<std::vector<utils::Index2D>> modify_guess_image(std::vector<std::vec
 
             return interactive_guess(*param, pb, pred);
         })
-        .onSuccess([&](std::vector<std::vector<utils::Index2D>>&& v){
+        .onSuccess([&](std::vector<std::vector<utils::ImageID>>&& v){
             param->swpImage = utils::SwappedImage(param->swpImage.dividedImage(), v);
 
             utils::DividedImage::foreach(param->swpImage, [&](size_t i, size_t j){
