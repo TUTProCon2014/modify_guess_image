@@ -6,6 +6,8 @@
 #include <vector>
 #include <boost/optional.hpp>
 #include <stack>
+#include <opencv2/opencv.hpp>
+#include <opencv/highgui.h>
 
 #include "../utils/include/types.hpp"
 #include "../utils/include/image.hpp"
@@ -136,10 +138,10 @@ struct Parameter
 {
     struct Saved
     {
-		template <typename A, typename B>
-		Saved(A&& idx, B&& tst)
-		: index(std::forward<A>(idx)), tileState(std::forward<B>(tst))
-		{}
+        template <typename A, typename B>
+        Saved(A&& idx, B&& tst)
+        : index(std::forward<A>(idx)), tileState(std::forward<B>(tst))
+        {}
 
         std::vector<std::vector<utils::ImageID>> index;
         std::vector<std::vector<TileState>> tileState;
@@ -150,7 +152,7 @@ struct Parameter
               std::vector<std::vector<utils::ImageID>> const & index,
               char const * title)
     : swpImage(pb.clone(), index),
-	  mouseEvSq(),
+      mouseEvSq(),
       tileState(std::vector<std::vector<TileState>>(pb.div_y(), std::vector<TileState>(pb.div_x(), TileState()))),
       windowName(title),
       _history(){}
@@ -198,13 +200,13 @@ struct Parameter
 
     void restore()
     {
-		if (_history.empty()) return;
+        if (_history.empty()) return;
 
         auto& t = _history.top();
         swpImage = utils::SwappedImage(swpImage.dividedImage(), t.index);
         tileState = t.tileState;
         mouseEvSq.clear();
-		_history.pop();
+        _history.pop();
     }
 };
 

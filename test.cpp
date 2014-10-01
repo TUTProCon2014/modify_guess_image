@@ -13,6 +13,7 @@
 #include "interactive_guess.hpp"
 #include "modify_guess_image.hpp"
 #include "../guess_img/include/guess.hpp"
+#include "../guess_img/include/blocked_guess.hpp"
 #include "../utils/include/backtrace.hpp"
 
 using namespace procon;
@@ -37,7 +38,7 @@ int main(int argc, char* argv[])
         auto pred = [](utils::Image const & img1, utils::Image const & img2, utils::Direction dir)
         { return guess::diff_connection(img1, img2, dir); };
 
-        auto idxs = guess::guess(pb, pred);
+        auto idxs = blocked_guess::guess(pb, pred);
         
         try{
             auto after = modify::modify_guess_image(idxs, pb, [](std::vector<std::vector<utils::ImageID>> imgMap){
