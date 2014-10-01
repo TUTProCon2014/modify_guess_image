@@ -5,6 +5,7 @@
 #include <memory>
 #include <future>
 #include <algorithm>
+#include <stack>
 
 #include "../inout/include/inout.hpp"
 #include "../utils/include/types.hpp"
@@ -59,6 +60,8 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
         executeCmdN = matchLeftDrag(evSq.begin(), evSq.end());
 
         if(executeCmdN == 2){
+            param.save();
+
             auto idx1 = evSq[0].index,
                  idx2 = evSq[1].index;
 
@@ -80,6 +83,8 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
 
         executeCmdN = std::max(executeCmdN, matchLeftDoubleClick(evSq.begin(), evSq.end()));
         if(executeCmdN == 4){
+            param.save();
+
             const auto idx1 = evSq[0].index;
             const auto r = idx1[0],
                        c = idx1[1];
@@ -99,6 +104,8 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
             return dst + matchLeftClick(++(++b), e);
         }(evSq.begin(), evSq.end()));
         if(executeCmdN == 4){
+            param.save();
+
             const auto idx1 = evSq[0].index,
                        idx2 = evSq[2].index;
 
@@ -134,6 +141,8 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
                 continue;
 
             if(executeCmdN){
+                param.save();
+
                 for(auto i: ir)
                     for(auto j: utils::iota(isRow ? img.div_x() : img.div_y())){
                         if(isRow) param.swap_element(utils::makeIndex2D(i, j), utils::makeIndex2D(i+di, j));
@@ -186,14 +195,13 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
             return interactive_guess(*param, pb, pred);
         })
         .onSuccess([&](std::vector<std::vector<utils::ImageID>>&& v){
+            param->save();
             param->swpImage = utils::SwappedImage(param->swpImage.dividedImage(), v);
 
             utils::DividedImage::foreach(param->swpImage, [&](size_t i, size_t j){
                 if(param->tileState[i][j].isGrouped())
                     param->tileState[i][j].reset();
             });
-
-            writeln(param->swpImage.get_index());
         })
         .onFailure([](std::runtime_error& ex){ utils::writeln(ex); });
     };
@@ -216,7 +224,9 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
 
     constexpr int enter = 10,
                   esc = 27,
-                  space = 32;
+                  space = 32,
+                  key_z = 97 + 'z' - 'a',
+				  key_c = 97 + 'c' - 'a';
 
     while(1){
         const int key = cv::waitKey(100);
@@ -236,6 +246,14 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
             // else
                 // utils::writeln("now running a guess thread");
             break;
+
+          case key_z:
+            param->restore();
+            break;
+
+		  case key_c:
+			param->mouseEvSq.clear();
+			break;
 
           default: {}
         }

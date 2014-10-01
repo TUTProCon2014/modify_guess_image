@@ -267,9 +267,7 @@ ImgMap interactive_guess(Parameter const & param, Problem const & pb, BinFunc pr
             imgMap[i].emplace_back(boost::none);
     });
 
-    auto res = std::get<1>(position_bfs(groups.begin(), groups.end(), imgMap, remain, pb, pred));
-    writeln(res);
-    return res;
+    return std::get<1>(position_bfs(groups.begin(), groups.end(), imgMap, remain, pb, pred));
 }
 
 
