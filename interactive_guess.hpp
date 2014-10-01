@@ -13,6 +13,7 @@
 #include "../utils/include/image.hpp"
 #include "../utils/include/range.hpp"
 #include "../utils/include/exception.hpp"
+#include "../utils/include/dwrite.hpp"
 #include "common.hpp"
 
 namespace procon { namespace modify {
@@ -111,7 +112,7 @@ ImgMap fill_remain_tile(
     };
 
 
-    std::unordered_set<ImageID> rem = remain;
+    Remains rem = remain;
     while(1){
         auto tgtIdx = get_nextTargetIndex();
         if (!tgtIdx)
@@ -231,7 +232,9 @@ ImgMap interactive_guess(Parameter const & param, Problem const & pb, BinFunc pr
                 if(gps.size() <= gId)
                     gps.resize(gId + 1);
 
-                gps[gId].emplace_back(imgIdx[i][j], std::array<std::ptrdiff_t, 2>({i, j}));
+                gps[gId].emplace_back(imgIdx[i][j],
+                    std::array<std::ptrdiff_t, 2>({static_cast<std::ptrdiff_t>(i),
+                                                   static_cast<std::ptrdiff_t>(j)}));
             }
         });
 
@@ -264,7 +267,9 @@ ImgMap interactive_guess(Parameter const & param, Problem const & pb, BinFunc pr
             imgMap[i].emplace_back(boost::none);
     });
 
-    return std::get<1>(position_bfs(groups.begin(), groups.end(), imgMap, remain, pb, pred));
+    auto res = std::get<1>(position_bfs(groups.begin(), groups.end(), imgMap, remain, pb, pred));
+    writeln(res);
+    return res;
 }
 
 
