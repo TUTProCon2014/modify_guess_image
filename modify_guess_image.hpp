@@ -222,11 +222,11 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
     };
 
 
-    constexpr int enter = 13,
+    constexpr int enter = utils::buildTarget == Target::Windows ? 13 : 10,
                   esc = 27,
                   space = 32,
                   key_z = 97 + 'z' - 'a',
-				  key_c = 97 + 'c' - 'a';
+                  key_c = 97 + 'c' - 'a';
 
     while(1){
         const int key = cv::waitKey(100);
@@ -251,9 +251,9 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
             param->restore();
             break;
 
-		  case key_c:
-			param->mouseEvSq.clear();
-			break;
+          case key_c:
+            param->mouseEvSq.clear();
+            break;
 
           default: {}
         }
