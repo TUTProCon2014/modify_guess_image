@@ -48,7 +48,7 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
         break;
     }
 
-    utils::writefln("cmd size: %, cmds : %", evSq.size(), evSq);
+    //utils::writefln("cmd size: %, cmds : %", evSq.size(), evSq);
 
     /**
     最長マッチ戦略でコマンド列を処理します。
@@ -222,7 +222,7 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
     };
 
 
-    constexpr int enter = 10,
+    constexpr int enter = 13,
                   esc = 27,
                   space = 32,
                   key_z = 97 + 'z' - 'a',
