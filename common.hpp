@@ -51,63 +51,76 @@ struct MouseEvent
 };
 
 
+struct MatchingResult
+{
+    MatchingResult(size_t len, bool bMatch)
+    : length(len), isMatched(bMatch){}
+
+
+    operator bool() const { return isMatched; }
+
+    size_t length;
+    bool isMatched;
+};
+
+
 template <typename Iterator>
-size_t matchLeftClick(Iterator b, Iterator e)
+MatchingResult matchLeftClick(Iterator b, Iterator e)
 {
     if(b == e || !(*b).isDownL())
-        return 0;
+        return MatchingResult(0, false);
 
     const auto lastIndex = (*b).index;
     if((++b) == e || !(*b).isUpL() || lastIndex != (*b).index)
-        return 1;
+        return MatchingResult(1, false);
 
-    return 2;
+    return MatchingResult(2, true);
 }
 
 
 template <typename Iterator>
-size_t matchLeftDrag(Iterator b, Iterator e)
+MatchingResult matchLeftDrag(Iterator b, Iterator e)
 {
     if(b == e || !(*b).isDownL())
-        return 0;
+        return MatchingResult(0, false);
 
     const auto lastIndex = (*b).index;
     if((++b) == e || !(*b).isUpL() || lastIndex == (*b).index)
-        return 1;
+        return MatchingResult(1, false);
 
-    return 2;
+    return MatchingResult(2, true);
 }
 
 
 template <typename Iterator>
-size_t matchLeftDoubleClick(Iterator b, Iterator e)
+MatchingResult matchLeftDoubleClick(Iterator b, Iterator e)
 {
-    size_t ret = matchLeftClick(b, e);
-    if(ret != 2)
-        return ret;
+    auto ml1 = matchLeftClick(b, e);
+    if(!ml1)
+        return MatchingResult(ml1.length, false);
 
     const auto lastIndex = (*b).index;
     ++(++b);
 
-    ret += matchLeftClick(b, e);
-    if(ret != 2 && (*b).index == lastIndex)
-        return ret;
+    auto ml2 = matchLeftClick(b, e);
+    if(ml2 && (*b).index == lastIndex)
+        return MatchingResult(ml1.length + ml2.length, true);
     else
-        return 2;
+        return MatchingResult(ml1.length, false);
 }
 
 
 template <typename Iterator>
-size_t matchRightClick(Iterator b, Iterator e)
+MatchingResult matchRightClick(Iterator b, Iterator e)
 {
     if(b == e || !(*b).isDownR())
-        return 0;
+        return MatchingResult(0, false);
 
     const auto lastIndex = (*b).index;
     if((++b) == e || !(*b).isUpR() || lastIndex != (*b).index)
-        return 1;
+        return MatchingResult(1, false);
 
-    return 2;
+    return MatchingResult(2, true);
 }
 
 

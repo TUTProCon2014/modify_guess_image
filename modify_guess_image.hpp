@@ -20,6 +20,66 @@
 namespace procon { namespace modify {
 
 
+
+void onRegionSelected(Parameter& param, Index2D const & idx1, Index2D const & idx2)
+{
+    for(auto r = idx1[0]; r <= idx2[0]; ++r)
+        for (auto c = idx1[1]; c <= idx2[1]; ++c){
+            if (param.tileState[r][c].isFree())
+                param.tileState[r][c].setGroup(0);
+            else if(param.tileState[r][c].isGrouped())
+                param.tileState[r][c].setFixed();
+            else
+                param.tileState[r][c].reset();
+        }
+}
+
+
+void onLeftDoubleClick(Parameter& param, Index2D const & idx1)
+{
+    const auto r = idx1[0],
+               c = idx1[1];
+
+    if (param.tileState[r][c].isFixed())
+        param.tileState[r][c].reset();
+    else
+        param.tileState[r][c].setFixed();
+}
+
+
+void onSelect2Tile(Parameter& param, Index2D const & idx1, Index2D const & idx2)
+{
+    param.swap_element(idx1, idx2);
+}
+
+
+void onRightClickEdge(Parameter& param, Index2D const & idx1)
+{
+    auto& img = param.swpImage;
+    bool isRow = true;
+    auto ir = utils::iota(0, 0, 1);
+    ptrdiff_t di = 0;
+
+    if(idx1[0] == 0 || idx1[1] == 0){
+        isRow = idx1[0] == 0;
+        ir = utils::iota(0, (isRow ? img.div_y() : img.div_x()) - 1, +1);
+        di = +1;
+    }
+    else if(idx1[0] == img.div_y() -1 || idx1[1] == img.div_x() - 1){
+        isRow = idx1[0] == img.div_y() - 1;
+        ir = utils::iota((isRow ? img.div_y() : img.div_x()) - 1, 0, -1);
+        di = -1;
+    }else
+        PROCON_ENFORCE(false, "logic error");
+
+    for(auto i: ir)
+        for(auto j: utils::iota(isRow ? img.div_x() : img.div_y())){
+            if(isRow) param.swap_element(utils::makeIndex2D(i, j), utils::makeIndex2D(i+di, j));
+            else      param.swap_element(utils::makeIndex2D(j, i), utils::makeIndex2D(j, i + di));
+        }
+}
+
+
 // マウス操作のコールバック
 void Mouse(int event, int x, int y, int flags, void* param_) // コールバック関数
 {
@@ -50,16 +110,20 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
 
     //utils::writefln("cmd size: %, cmds : %", evSq.size(), evSq);
 
+    auto consumeN = [&](size_t n){
+        for(size_t i = 0; i < n; ++i)
+            evSq.pop_front();
+    };
+
     /**
     最長マッチ戦略でコマンド列を処理します。
     */
-    size_t executeCmdN = 0;
-    do{
-        for (auto i : utils::iota(executeCmdN))
-            evSq.pop_front();
-        executeCmdN = matchLeftDrag(evSq.begin(), evSq.end());
+    utils::writeln(evSq);
+    while(!evSq.empty()){
+        size_t matchLength = 0;
 
-        if(executeCmdN == 2){
+        auto m1 = matchLeftDrag(evSq.begin(), evSq.end());
+        if(m1){
             param.save();
 
             auto idx1 = evSq[0].index,
@@ -68,94 +132,69 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
             if(idx1[0] > idx2[0]) std::swap(idx1[0], idx2[0]);
             if(idx1[1] > idx2[1]) std::swap(idx1[1], idx2[1]);
 
-            for(auto r = idx1[0]; r <= idx2[0]; ++r)
-                for (auto c = idx1[1]; c <= idx2[1]; ++c){
-                    if (param.tileState[r][c].isFree())
-                        param.tileState[r][c].setGroup(0);
-                    else if(param.tileState[r][c].isGrouped())
-                        param.tileState[r][c].setFixed();
-                    else
-                        param.tileState[r][c].reset();
-                }
-
+            onRegionSelected(param, idx1, idx2);
+            consumeN(m1.length);
             continue;
-        }
+        }else
+            matchLength = m1.length;
 
-        executeCmdN = std::max(executeCmdN, matchLeftDoubleClick(evSq.begin(), evSq.end()));
-        if(executeCmdN == 4){
+
+        MatchingResult m2 = matchLeftDoubleClick(evSq.begin(), evSq.end());
+        if(m2){
             param.save();
-
             const auto idx1 = evSq[0].index;
-            const auto r = idx1[0],
-                       c = idx1[1];
 
-            if (param.tileState[r][c].isFixed())
-                param.tileState[r][c].reset();
-            else
-                param.tileState[r][c].setFixed();
+            onLeftDoubleClick(param, idx1);
+            consumeN(m2.length);
             continue;
-        }
+        }else
+            matchLength = std::max(matchLength, m2.length);
 
-        executeCmdN = std::max(executeCmdN, [](auto b, auto e){
-            size_t dst = matchLeftClick(b, e);
-            if(dst != 2)
-                return dst;
+        auto m3 = [](decltype(evSq.begin()) b, decltype(evSq.end()) e) -> MatchingResult {
+            auto mm1 = matchLeftClick(b, e);
+            if(mm1){
+                ++b; ++b;
+                auto mm2 = matchLeftClick(b, e);
+                if(mm2)
+                    return MatchingResult(mm1.length + mm2.length, true);
+                else
+                    return MatchingResult(mm1.length + mm2.length, false);
+            }else
+                return MatchingResult(mm1.length, false);
+        }(evSq.begin(), evSq.end());
 
-            return dst + matchLeftClick(++(++b), e);
-        }(evSq.begin(), evSq.end()));
-        if(executeCmdN == 4){
+        if(m3){
             param.save();
-
             const auto idx1 = evSq[0].index,
                        idx2 = evSq[2].index;
 
-            param.swap_element(idx1, idx2);
+            onSelect2Tile(param, idx1, idx2);
+            consumeN(m3.length);
             continue;
         }
 
-        if(executeCmdN){
-            executeCmdN = evSq.size() == executeCmdN ? 0 : executeCmdN;
-            continue;
-        }
+        matchLength = std::max(matchLength, m3.length);
 
-        executeCmdN = matchRightClick(evSq.begin(), evSq.end());
-        if(executeCmdN == 2){
-            auto idx1 = evSq[0].index,
-                 idx2 = evSq[1].index;
 
-            bool isRow = true;
-            auto ir = utils::iota(0, 0, 1);
-            ptrdiff_t di = 0;
+        auto m4 = matchRightClick(evSq.begin(), evSq.end());
+        if(m4){
+            auto idx1 = evSq[0].index;
 
-            if(idx1 == idx2 && (idx1[0] == 0 || idx1[1] == 0)){
-                isRow = idx1[0] == 0;
-                ir = utils::iota(0, (isRow ? img.div_y() : img.div_x()) - 1, +1);
-                di = +1;
-            }
-            else if(idx1 == idx2 && (idx1[0] == img.div_y() -1 || idx1[1] == img.div_x() - 1)){
-                isRow = idx1[0] == img.div_y() - 1;
-                ir = utils::iota((isRow ? img.div_y() : img.div_x()) - 1, 0, -1);
-                di = -1;
-            }
-            else
-                continue;
-
-            if(executeCmdN){
+            if(idx1[0] == 0 || idx1[1] == 0 || idx1[0] == img.div_y() - 1 || idx1[1] == img.div_x() - 1){
                 param.save();
-
-                for(auto i: ir)
-                    for(auto j: utils::iota(isRow ? img.div_x() : img.div_y())){
-                        if(isRow) param.swap_element(utils::makeIndex2D(i, j), utils::makeIndex2D(i+di, j));
-                        else      param.swap_element(utils::makeIndex2D(j, i), utils::makeIndex2D(j, i + di));
-                    }
+                onRightClickEdge(param, idx1);
+                consumeN(m4.length);
+                continue;
             }
-            continue;
         }
 
-        executeCmdN = executeCmdN == 0 ? (evSq.size() == 0 ? 0 : 1) : executeCmdN;
-        executeCmdN = evSq.size() == executeCmdN ? 0 : executeCmdN;
+        matchLength = std::max(matchLength, m4.length);
 
-    }while(executeCmdN);
+        if(matchLength < evSq.size())
+            consumeN(std::max(static_cast<size_t>(1), matchLength));
+        else if(matchLength == evSq.size())
+            break;
+    }
 
     cv::imshow(param.windowName, param.cvMat());
 }
