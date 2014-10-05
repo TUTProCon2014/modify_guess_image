@@ -157,7 +157,7 @@ bool is_fit(Group const & group, OptionalMap const & imgMap, std::size_t i, std:
         return false;
 
     auto can_put = [&](std::ptrdiff_t i, std::ptrdiff_t j) -> bool {
-        if(i >= imgMap.size() || j >= imgMap[i].size() || i < 0 || j < 0) return false;
+        if(opCmp<ptrdiff_t>(i, imgMap.size()) >= 0 || opCmp<ptrdiff_t>(j, imgMap[i].size()) >= 0 || i < 0 || j < 0) return false;
         return !imgMap[i][j];
     };
 

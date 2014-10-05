@@ -83,11 +83,6 @@ void onRightClickEdge(Parameter& param, Index2D const & idx1)
 // マウス操作のコールバック
 void Mouse(int event, int x, int y, int flags, void* param_) // コールバック関数
 {
-    // utils::writefln("(%, %)", x, y);
-
-    static bool MOUSE_FLAG = false;
-    // static int tate = -1, yoko = -1,tate2 = -1, yoko2 = -1;
-
     auto& param = *static_cast<Parameter*>(param_);
     auto& evSq = param.mouseEvSq;
     auto& img = param.swpImage;
@@ -98,7 +93,7 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
       case CV_EVENT_LBUTTONDOWN:
       case CV_EVENT_RBUTTONUP:
       case CV_EVENT_RBUTTONDOWN:
-        if(x >= 0 && y >= 0 && x < param.swpImage.width() && y < param.swpImage.height())
+        if(x >= 0 && y >= 0 && opCmp<size_t>(x, param.swpImage.width()) < 0 && opCmp<size_t>(y, param.swpImage.height()) < 0)
             evSq.emplace_back(event, utils::makeIndex2D(
                 y / (img.height() / img.div_y()),
                 x / (img.width() / img.div_x())));
@@ -118,7 +113,6 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
     /**
     最長マッチ戦略でコマンド列を処理します。
     */
-    utils::writeln(evSq);
     while(!evSq.empty()){
         size_t matchLength = 0;
 
