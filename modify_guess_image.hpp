@@ -255,7 +255,8 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
     };
 
 
-    constexpr int enter = utils::buildTarget == Target::Windows ? 13 : 10,
+    constexpr int enter10 = 10,
+                  enter13 = 13,
                   esc = 27,
                   space = 32,
                   key_z = 97 + 'z' - 'a',
@@ -266,7 +267,8 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
 
         arrangeThreads();
         switch(key){
-          case enter:
+          case enter10:
+          case enter13:
             spawnNewThread();
             break;
 
