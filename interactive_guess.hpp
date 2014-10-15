@@ -27,7 +27,7 @@ using Remains = std::unordered_set<ImageID>;
 
 
 template <typename BinFunc>
-double calcAllValue(ImgMap const & imgMap, Problem const & pb, BinFunc pred)
+double calcAllValue(ImgMap const & imgMap, Problem const & pb, BinFunc const & pred)
 {
     double sumV = 0;
     for (auto i : iota(1, pb.div_y()))
@@ -35,7 +35,7 @@ double calcAllValue(ImgMap const & imgMap, Problem const & pb, BinFunc pred)
             const auto imgID1 = imgMap[i-1][j],
                        imgID2 = imgMap[i][j];
 
-            sumV += pred(pb.get_element(imgID1), pb.get_element(imgID2), Direction::down);
+            sumV += pred(imgID1, imgID2, Direction::down);
         }
 
     for (auto i : iota(0, pb.div_y()))
@@ -43,7 +43,7 @@ double calcAllValue(ImgMap const & imgMap, Problem const & pb, BinFunc pred)
             const auto imgID1 = imgMap[i][j - 1],
                        imgID2 = imgMap[i][j];
         
-            sumV += pred(pb.get_element(imgID1), pb.get_element(imgID2), Direction::right);
+            sumV += pred(imgID1, imgID2, Direction::right);
         }
 
     return sumV;
@@ -55,7 +55,7 @@ ImgMap fill_remain_tile(
         OptionalMap const & imgMap,
         Remains const & remain,
         Problem const & pb,
-        BinFunc pred)
+        BinFunc const & pred)
 {
     OptionalMap before = imgMap;
 
@@ -72,7 +72,7 @@ ImgMap fill_remain_tile(
                    j = where[1];
 
         auto pred_value = [&](ImageID a, ImageID b, Direction dir)
-        { return std::abs(pred(pb.get_element(a), pb.get_element(b), dir)); };
+        { return std::abs(pred(a, b, dir)); };
 
         double v = 0;
         if(i > 0 && !!before[i-1][j])               v += pred_value(which, *before[i-1][j], Direction::up);
@@ -188,7 +188,7 @@ std::tuple<double, ImgMap>
                  OptionalMap const & imgMap,
                  Remains const & remain,
                  Problem const & pb,
-                 BinFunc pred)
+                 BinFunc const & pred)
 {
     OptionalMap copyedMap = imgMap;
 
@@ -219,7 +219,7 @@ std::tuple<double, ImgMap>
 
 
 template <typename BinFunc>
-ImgMap interactive_guess(Parameter const & param, Problem const & pb, BinFunc pred)
+ImgMap interactive_guess(Parameter const & param, Problem const & pb, BinFunc const & pred)
 {
     using namespace boost::adaptors;
 

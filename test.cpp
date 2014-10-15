@@ -14,6 +14,7 @@
 #include "modify_guess_image.hpp"
 #include "../guess_img/include/guess.hpp"
 #include "../guess_img/include/blocked_guess.hpp"
+#include "../guess_img/include/correlation.hpp"
 #include "../utils/include/backtrace.hpp"
 
 using namespace procon;
@@ -35,8 +36,7 @@ int main(int argc, char* argv[])
     if(p_opt){
         auto& pb = *p_opt;
         
-        auto pred = [](utils::Image const & img1, utils::Image const & img2, utils::Direction dir)
-        { return guess::diff_connection(img1, img2, dir); };
+        auto pred = guess::Correlator(pb);
 
         auto idxs = blocked_guess::guess(pb, pred);
         

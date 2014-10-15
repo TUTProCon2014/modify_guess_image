@@ -13,6 +13,7 @@
 #include "../utils/include/range.hpp"
 #include "../utils/include/exception.hpp"
 #include "../guess_img/include/guess.hpp"
+#include "../guess_img/include/correlation.hpp"
 #include "common.hpp"
 #include "interactive_guess.hpp"
 
@@ -223,7 +224,7 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
     // 画像推定を行う
     auto doInteractiveGuess = [&](){
         utils::collectException<std::runtime_error>([&](){
-            auto pred = [](utils::Image const & a, utils::Image const & b, utils::Direction dir){ return guess::diff_connection(a, b, dir); };
+            auto pred = guess::Correlator(pb);
 
             return interactive_guess(*param, pb, pred);
         })
