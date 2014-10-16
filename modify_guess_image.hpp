@@ -298,7 +298,7 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
     }
 
   Lreturn:
-
+    cv::destroyWindow(windowName);
     return param->swpImage.get_index();
 }
 
