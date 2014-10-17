@@ -317,6 +317,10 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
 
           case key_c:
             param->mouseEvSq.clear();
+            param->save();
+            utils::DividedImage::foreach(param->swpImage, [&](size_t i, size_t j){
+                param->tileState[i][j].reset();
+            });
             break;
 
           default: {}
