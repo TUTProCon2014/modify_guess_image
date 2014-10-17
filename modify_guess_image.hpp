@@ -36,6 +36,15 @@ void onRegionSelected(Parameter& param, Index2D const & idx1, Index2D const & id
 }
 
 
+void onRegionSelectedByRight(Parameter& param, Index2D const & idx1, Index2D const & idx2)
+{
+    for(auto r = idx1[0]; r <= idx2[0]; ++r)
+        for (auto c = idx1[1]; c <= idx2[1]; ++c)
+            if(!param.tileState[r][c].isFixed())
+                param.tileState[r][c].setFixed();
+}
+
+
 void onLeftDoubleClick(Parameter& param, Index2D const & idx1)
 {
     const auto r = idx1[0],
@@ -184,6 +193,25 @@ void Mouse(int event, int x, int y, int flags, void* param_) // コールバッ�
         }
 
         matchLength = std::max(matchLength, m4.length);
+
+
+        auto m5 = matchRightDrag(evSq.begin(), evSq.end());
+        if(m5){
+            param.save();
+
+            auto idx1 = evSq[0].index,
+                 idx2 = evSq[1].index;
+
+            if(idx1[0] > idx2[0]) std::swap(idx1[0], idx2[0]);
+            if(idx1[1] > idx2[1]) std::swap(idx1[1], idx2[1]);
+
+            onRegionSelectedByRight(param, idx1, idx2);
+            consumeN(m5.length);
+            continue;
+        }
+
+        matchLength = std::max(matchLength, m5.length);
+
 
         if(matchLength < evSq.size())
             consumeN(std::max(static_cast<size_t>(1), matchLength));

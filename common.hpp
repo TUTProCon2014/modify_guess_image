@@ -124,6 +124,20 @@ MatchingResult matchRightClick(Iterator b, Iterator e)
 }
 
 
+template <typename Iterator>
+MatchingResult matchRightDrag(Iterator b, Iterator e)
+{
+    if(b == e || !(*b).isDownR())
+        return MatchingResult(0, false);
+
+    const auto lastIndex = (*b).index;
+    if((++b) == e || !(*b).isUpR() || lastIndex == (*b).index)
+        return MatchingResult(1, false);
+
+    return MatchingResult(2, true);
+}
+
+
 struct TileState
 {
     TileState() : _state(0) {}
