@@ -14,6 +14,7 @@
 #include "../utils/include/exception.hpp"
 #include "../guess_img/include/guess.hpp"
 #include "../guess_img/include/correlation.hpp"
+#include "../guess_img/include/correlation_s.hpp"
 #include "common.hpp"
 #include "interactive_guess.hpp"
 
@@ -250,10 +251,8 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
 
 
     // 画像推定を行う
-    auto doInteractiveGuess = [&](){
+    auto doInteractiveGuess = [&param, &pb](const auto& pred){
         utils::collectException<std::runtime_error>([&](){
-            auto pred = guess::Correlator(pb);
-
             return interactive_guess(*param, pb, pred);
         })
         .onSuccess([&](std::vector<std::vector<utils::ImageID>>&& v){
@@ -289,7 +288,11 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
                   esc = 27,
                   space = 32,
                   key_z = 97 + 'z' - 'a',
-                  key_c = 97 + 'c' - 'a';
+                  key_c = 97 + 'c' - 'a',
+                  tab = 9;
+
+    auto pred_guess = guess::Correlator(pb);
+    auto pred_s = guess_s::Correlator(pb);
 
     while(1){
         const int key = cv::waitKey(100);
@@ -306,7 +309,7 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
 
           case space:
             // if(!guessThread)
-                doInteractiveGuess();
+                doInteractiveGuess(pred_guess);
             // else
                 // utils::writeln("now running a guess thread");
             break;
@@ -322,6 +325,9 @@ std::vector<std::vector<utils::ImageID>> modify_guess_image(std::vector<std::vec
                 param->tileState[i][j].reset();
             });
             break;
+
+          case tab:
+            doInteractiveGuess(pred_s);
 
           default: {}
         }
