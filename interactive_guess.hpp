@@ -27,19 +27,22 @@ using Remains = std::unordered_set<ImageID>;
 
 
 template <typename BinFunc>
-double calcAllValue(ImgMap const & imgMap, Problem const & pb, BinFunc const & pred)
+double calcAllValue(ImgMap const & imgMap, BinFunc const & pred)
 {
+    const auto div_y = imgMap.size(),
+               div_x = imgMap[0].size();
+
     double sumV = 0;
-    for (auto i : iota(1, pb.div_y()))
-        for (auto j : iota(0, pb.div_x())){
+    for (auto i : iota(1, div_y))
+        for (auto j : iota(0, div_x)){
             const auto imgID1 = imgMap[i-1][j],
                        imgID2 = imgMap[i][j];
 
             sumV += pred(imgID1, imgID2, Direction::down);
         }
 
-    for (auto i : iota(0, pb.div_y()))
-        for (auto j : iota(1, pb.div_x())){
+    for (auto i : iota(0, div_y))
+        for (auto j : iota(1, div_x)){
             const auto imgID1 = imgMap[i][j - 1],
                        imgID2 = imgMap[i][j];
         
@@ -54,17 +57,17 @@ template <typename BinFunc>
 ImgMap fill_remain_tile(
         OptionalMap const & imgMap,
         Remains const & remain,
-        Problem const & pb,
         BinFunc const & pred)
 {
+    const auto div_y = imgMap.size(),
+               div_x = imgMap[0].size();
+
     OptionalMap before = imgMap;
 
-    PROCON_ENFORCE(before.size() == pb.div_y(), "Contract error: 'before.size() != pb.div_y()'");
+    PROCON_ENFORCE(before.size() == div_y, "Contract error: 'before.size() != div_y'");
 
-    for(auto i: iota(pb.div_y()))
-        PROCON_ENFORCE(before[i].size() == pb.div_x(), format("Contract error: 'before[%].size() != pb.div_x()'", i));
-
-    PROCON_ENFORCE(remain.size() < pb.div_x() * pb.div_y(), "Contract error: 'all argument(before)'s elements are null.");
+    for(auto i: iota(div_y))
+        PROCON_ENFORCE(before[i].size() == div_x, format("Contract error: 'before[%].size() != div_x'", i));
 
     // beforeでの抜け落ち`where`の周囲について、`which`画像がどの程度マッチするかを返す
     auto around_pred_value = [&](Index2D where, ImageID which){
@@ -75,10 +78,10 @@ ImgMap fill_remain_tile(
         { return std::abs(pred(a, b, dir)); };
 
         double v = 0;
-        if(i > 0 && !!before[i-1][j])               v += pred_value(which, *before[i-1][j], Direction::up);
-        if(i < pb.div_y() - 1 && !!before[i+1][j])  v += pred_value(which, *before[i+1][j], Direction::down); 
-        if(j > 0 && !!before[i][j-1])               v += pred_value(which, *before[i][j-1], Direction::left);
-        if(j < pb.div_x() - 1 && !!before[i][j+1])  v += pred_value(which, *before[i][j+1], Direction::right);
+        if(i > 0 && !!before[i-1][j])           v += pred_value(which, *before[i-1][j], Direction::up);
+        if(i < div_y - 1 && !!before[i+1][j])   v += pred_value(which, *before[i+1][j], Direction::down); 
+        if(j > 0 && !!before[i][j-1])           v += pred_value(which, *before[i][j-1], Direction::left);
+        if(j < div_x - 1 && !!before[i][j+1])   v += pred_value(which, *before[i][j+1], Direction::right);
 
         // writefln("%, %, %", where, which, v);
         return v;
@@ -89,16 +92,16 @@ ImgMap fill_remain_tile(
     auto get_nextTargetIndex = [&](){
         auto targetIndex = boost::optional<Index2D>(boost::none);
         std::size_t maxN = 0;
-        for(auto i: iota(pb.div_y()))
-            for(auto j: iota(pb.div_x())){
+        for(auto i: iota(div_y))
+            for(auto j: iota(div_x)){
                 if(before[i][j])
                     continue;
 
                 std::size_t cnt = 0;
-                if(i > 0 && !!before[i-1][j])                   ++cnt;
-                if(i < pb.div_y() - 1 && !!before[i+1][j])      ++cnt;
-                if(j > 0 && !!before[i][j-1])                   ++cnt;
-                if(j < pb.div_x() - 1 && !!before[i][j+1])      ++cnt;
+                if(i > 0 && !!before[i-1][j])           ++cnt;
+                if(i < div_y - 1 && !!before[i+1][j])   ++cnt;
+                if(j > 0 && !!before[i][j-1])           ++cnt;
+                if(j < div_x - 1 && !!before[i][j+1])   ++cnt;
 
                 if(maxN < cnt){
                     maxN = cnt;
@@ -193,8 +196,8 @@ std::tuple<double, ImgMap>
     OptionalMap copyedMap = imgMap;
 
     if (bg == ed){
-        auto idxArr = fill_remain_tile(copyedMap, remain, pb, pred);
-        double val = calcAllValue(idxArr, pb, pred);
+        auto idxArr = fill_remain_tile(copyedMap, remain, pred);
+        double val = calcAllValue(idxArr, pred);
 
         return std::make_tuple(val, idxArr);
     }
